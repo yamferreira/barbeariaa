@@ -1,15 +1,9 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
-  return (
-    <main>
-      <h1>Welcome to Next.js!</h1>
-      <Image
-        src="/nextjs-logo.png"
-        alt="Next.js Logo"
-        width={500}
-        height={500}
-      />
-    </main>
-  );
+import { Button } from "@/app/_components/ui/button"
+
+const Home = () => {
+  return <Button>test</Button>
 }
+
+export default Home
