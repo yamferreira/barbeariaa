@@ -1,7 +1,12 @@
-import { Button } from "@/app/_components/ui/button"
+import Header from "./_components/ui/header"
 
 const Home = () => {
-  return <Button className="bg-blue-500 text-white">test</Button>
+  return (
+    <div>
+      {/* header */}
+      <Header />
+    </div>
+  )
 }
 
 export default Home
