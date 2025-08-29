@@ -5,6 +5,7 @@ import { Button } from "@/app/_components/ui/button"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import ServiceItem from "@/app/_components/ui/service-item"
+import PhoneItem from "@/app/_components/ui/phone-item"
 
 interface BarbershopPageProps {
   params: {
@@ -78,13 +79,20 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
         <p className="text-justify text-sm">{barbershop?.description}</p>
       </div>
 
-      <div className="space-y-3 p-5">
+      {/* Services */}
+      <div className="space-y-3 border-b border-solid p-5">
         <h2 className="text-xs font-bold text-gray-400 uppercase">Serviços</h2>
         <div className="space-y-3">
           {barbershop.services.map((service) => (
             <ServiceItem key={service.id} service={service} />
           ))}
         </div>
+      </div>
+
+      <div className="space-y-3 p-5">
+        {barbershop.phone.map((phone, idx) => (
+          <PhoneItem key={phone + idx} phone={phone} />
+        ))}
       </div>
     </div>
   )
