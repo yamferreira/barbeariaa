@@ -2,6 +2,7 @@
 
 import { SmartphoneIcon } from "lucide-react"
 import { Button } from "./button"
+import { toast } from "sonner"
 
 interface PhoneItemProps {
   phone: string
@@ -10,6 +11,7 @@ interface PhoneItemProps {
 const PhoneItem = ({ phone }: PhoneItemProps) => {
   const handleCopyPhoneClick = (phone: string) => {
     navigator.clipboard.writeText(phone)
+    toast.success("Número copiado para a área de transferência!")
   }
   return (
     <div className="flex justify-between" key={phone}>
