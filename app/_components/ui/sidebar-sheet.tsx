@@ -1,10 +1,20 @@
 import Image from "next/image"
 import { Button } from "./button"
-import { CalendarIcon, HomeIcon, LogOutIcon } from "lucide-react"
+import { CalendarIcon, HomeIcon, LogInIcon, LogOutIcon } from "lucide-react"
 import { SheetContent, SheetHeader, SheetTitle, SheetClose } from "./sheet"
 import Link from "next/link"
 import { quickSearchOptions } from "@/app/_constants/search"
-import { Avatar, AvatarImage } from "./avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./dialog"
+{
+  /*import { Avatar, AvatarImage } from "./avatar"*/
+}
 
 const SideBarSheet = () => {
   return (
@@ -13,7 +23,36 @@ const SideBarSheet = () => {
         <SheetTitle className="text-left">Menu</SheetTitle>
       </SheetHeader>
 
-      <div className="flex items-center gap-3 border-b border-solid py-5 pl-3">
+      <div className="flex items-center justify-between gap-3 border-b border-solid py-5 pl-3">
+        <h2 className="font-bold">Olá, faça seu Login!</h2>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button size="icon" variant="secondary">
+              <LogInIcon />
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="w-[90%]">
+            <DialogHeader>
+              <DialogTitle>Faça seu login na plataforma</DialogTitle>
+              <DialogDescription>
+                Conecte usando sua conta do Google.
+              </DialogDescription>
+            </DialogHeader>
+            <Button
+              variant="outline"
+              className="mt-2 justify-center gap-1 font-bold"
+            >
+              <Image
+                src="/google.svg"
+                width={18}
+                height={18}
+                alt="Google Icon"
+              />
+              Google
+            </Button>
+          </DialogContent>
+        </Dialog>
+        {/*
         <Avatar>
           <AvatarImage
             src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=880&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
@@ -24,7 +63,7 @@ const SideBarSheet = () => {
         <div>
           <p className="font-bold">Felipe Rocha</p>
           <p className="text-xs">Felipeferreira@gmail.com</p>
-        </div>
+        </div>*/}
       </div>
 
       <div className="flex flex-col gap-2 border-b border-solid p-5 py-5">
