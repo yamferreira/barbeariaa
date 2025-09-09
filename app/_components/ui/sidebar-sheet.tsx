@@ -4,7 +4,7 @@ import { CalendarIcon, HomeIcon, LogOutIcon } from "lucide-react"
 import { SheetContent, SheetHeader, SheetTitle, SheetClose } from "./sheet"
 import Link from "next/link"
 import { quickSearchOptions } from "@/app/_constants/search"
-import { Avatar, AvatarImage } from "@radix-ui/react-avatar"
+import { Avatar, AvatarImage } from "./avatar"
 
 const SideBarSheet = () => {
   return (
