@@ -50,4 +50,3 @@ build/
 *.jar
 *.class
 .clone
-public/
