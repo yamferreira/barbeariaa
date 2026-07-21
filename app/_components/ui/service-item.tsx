@@ -6,18 +6,16 @@ import { Button } from "./button"
 import { Card, CardContent } from "./card"
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "./sheet"
 import { Calendar } from "./calendar"
 import { ptBR } from "date-fns/locale"
 import { useState } from "react"
 import { format, set } from "date-fns"
-import { useSession } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { createBooking } from "@/app/_actions/create-booking"
 import { toast } from "sonner"
 
@@ -45,6 +43,7 @@ const TIME_LIST = [
 
 const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const { data } = useSession()
+  const [sheetIsOpen, setSheetIsOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
@@ -57,9 +56,18 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time)
   }
+
+  const handleBookingClick = () => {
+    if (!data?.user) {
+      signIn("google")
+      return
+    }
+    setSheetIsOpen(true)
+  }
+
   const handleCreateBooking = async () => {
     try {
-      if (!selectedDay || !selectedTime) return
+      if (!selectedDay || !selectedTime || !data?.user) return
       const hour = Number(selectedTime.split(":")[0])
       const minutes = Number(selectedTime.split(":")[1])
       const newDate = set(selectedDay, {
@@ -68,9 +76,12 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       })
       await createBooking({
         serviceId: service.id,
-        userId: data?.user?.id as string,
+        userId: data.user.id as string,
         date: newDate,
       })
+      setSheetIsOpen(false)
+      setSelectedDay(undefined)
+      setSelectedTime(undefined)
       toast.success("Reserva criada com sucesso!")
     } catch (error) {
       console.log(error)
@@ -101,12 +112,16 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
               }).format(Number(service.price))}
             </p>
 
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="secondary" size="sm" className="ml-auto">
-                  Agendar
-                </Button>
-              </SheetTrigger>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-auto"
+              onClick={handleBookingClick}
+            >
+              Agendar
+            </Button>
+
+            <Sheet open={sheetIsOpen} onOpenChange={setSheetIsOpen}>
               <SheetContent className="px-0">
                 <SheetHeader>
                   <SheetTitle>Agendar</SheetTitle>
@@ -196,14 +211,12 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                   </div>
                 )}
                 <SheetFooter className="mt-5 px-5">
-                  <SheetClose asChild>
-                    <Button
-                      onClick={handleCreateBooking}
-                      disabled={!selectedTime || !selectedDay}
-                    >
-                      Confirmar
-                    </Button>
-                  </SheetClose>
+                  <Button
+                    onClick={handleCreateBooking}
+                    disabled={!selectedTime || !selectedDay}
+                  >
+                    Confirmar
+                  </Button>
                 </SheetFooter>
               </SheetContent>
             </Sheet>
