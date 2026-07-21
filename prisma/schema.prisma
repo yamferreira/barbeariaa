@@ -96,4 +96,6 @@ model Booking {
   updatedAt DateTime          @updatedAt
   service   BarbershopService @relation(fields: [serviceId], references: [id])
   user      User              @relation(fields: [userId], references: [id])
+
+  @@unique([serviceId, date])
 }
