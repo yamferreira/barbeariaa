@@ -19,3 +19,45 @@ export const getBookings = async ({ serviceId, date }: GetBookingsParams) => {
     },
   })
 }
+
+export const getConfirmedBookings = async (userId: string) => {
+  return db.booking.findMany({
+    where: {
+      userId,
+      date: {
+        gte: new Date(),
+      },
+    },
+    include: {
+      service: {
+        include: {
+          barbershop: true,
+        },
+      },
+    },
+    orderBy: {
+      date: "asc",
+    },
+  })
+}
+
+export const getFinishedBookings = async (userId: string) => {
+  return db.booking.findMany({
+    where: {
+      userId,
+      date: {
+        lt: new Date(),
+      },
+    },
+    include: {
+      service: {
+        include: {
+          barbershop: true,
+        },
+      },
+    },
+    orderBy: {
+      date: "desc",
+    },
+  })
+}
