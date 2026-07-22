@@ -9,6 +9,8 @@ import Search from "./_components/ui/search"
 import Link from "next/link"
 import { auth } from "./api/auth/[...nextauth]/route"
 import { getConfirmedBookings } from "./_actions/get-bookings"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 const Home = async () => {
   const session = await auth()
@@ -21,14 +23,19 @@ const Home = async () => {
   const confirmedBookings = session?.user
     ? await getConfirmedBookings(session.user.id as string)
     : []
+  const firstName = session?.user?.name?.split(" ")[0]
+  const today = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })
+  const capitalizedToday = today.charAt(0).toUpperCase() + today.slice(1)
 
   return (
     <div>
       {/* header */}
       <Header />
       <div className="p-5">
-        <h2 className="text-xl font-bold">Olá, Yam!</h2>
-        <p>Segunda-feira, 05 de agosto.</p>
+        <h2 className="text-xl font-bold">
+          Olá{firstName ? `, ${firstName}` : ""}!
+        </h2>
+        <p>{capitalizedToday}.</p>
 
         {/* search input */}
         <div className="mt-6">
