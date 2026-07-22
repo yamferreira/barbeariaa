@@ -2,6 +2,7 @@ import { format, isFuture } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Avatar, AvatarImage } from "./avatar"
 import { Badge } from "./badge"
+import CancelBookingDialog from "./cancel-booking-dialog"
 import { Card, CardContent } from "./card"
 import type {
   Barbershop,
@@ -24,24 +25,28 @@ const BookingItem = ({ booking }: BookingItemProps) => {
     <Card>
       <CardContent className="flex justify-between p-0">
         {/* div left */}
-        <div className="flex flex-col gap-2 py-5 pl-5">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 py-5 pl-5">
           <Badge
             className="w-fit"
             variant={isConfirmed ? "default" : "secondary"}
           >
             {isConfirmed ? "Confirmado" : "Finalizado"}
           </Badge>
-          <h3 className="font-semibold">{booking.service.name}</h3>
+          <h3 className="truncate font-semibold">{booking.service.name}</h3>
 
-          <div className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar className="h-6 w-6 shrink-0">
               <AvatarImage src={booking.service.barbershop.imageUrl} />
             </Avatar>
-            <p className="text-sm">{booking.service.barbershop.name}</p>
+            <p className="truncate text-sm">
+              {booking.service.barbershop.name}
+            </p>
           </div>
+
+          {isConfirmed && <CancelBookingDialog bookingId={booking.id} />}
         </div>
         {/* div right */}
-        <div className="flex flex-col items-center justify-center border-l px-5 py-5">
+        <div className="flex shrink-0 flex-col items-center justify-center border-l px-5 py-5">
           <p className="text-sm capitalize">
             {format(booking.date, "MMMM", { locale: ptBR })}
           </p>
