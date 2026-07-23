@@ -2,17 +2,28 @@
 
 import { Prisma } from "../generated/prisma"
 import { db } from "../_lib/prisma"
+import { auth } from "../api/auth/[...nextauth]/route"
 
 interface CreateBookingParams {
-  userId: string
   serviceId: string
   date: Date
 }
 
 export const createBooking = async (params: CreateBookingParams) => {
+  const session = await auth()
+  if (!session?.user) {
+    return {
+      success: false as const,
+      message: "Você precisa estar logado para agendar.",
+    }
+  }
+
   try {
     await db.booking.create({
-      data: params,
+      data: {
+        ...params,
+        userId: session.user.id as string,
+      },
     })
     return { success: true as const }
   } catch (error) {
