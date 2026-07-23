@@ -98,10 +98,17 @@ model Booking {
   userId    String
   serviceId String
   date      DateTime
+  status    BookingStatus     @default(CONFIRMADO)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   service   BarbershopService @relation(fields: [serviceId], references: [id])
   user      User              @relation(fields: [userId], references: [id])
 
   @@unique([serviceId, date])
+}
+
+enum BookingStatus {
+  CONFIRMADO
+  CONCLUIDO
+  CANCELADO
 }
