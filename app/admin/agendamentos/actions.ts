@@ -52,6 +52,13 @@ export const rescheduleBooking = async (
     }
   }
 
+  if (!/^([01]\d|2[0-3]):([0-5]\d)$/.test(novoHorario)) {
+    return {
+      success: false as const,
+      message: "Horário inválido. Use o formato HH:mm.",
+    }
+  }
+
   const [hours, minutes] = novoHorario.split(":").map(Number)
   const newDate = set(novaData, {
     hours,
