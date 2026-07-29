@@ -9,6 +9,7 @@ import type {
 import { Card, CardContent } from "./card"
 import { Badge } from "./badge"
 import AdminBookingActions from "./admin-booking-actions"
+import RescheduleBookingDialog from "./reschedule-booking-dialog"
 
 interface AdminBookingItemProps {
   booking: Booking & {
@@ -43,7 +44,13 @@ const AdminBookingItem = ({ booking }: AdminBookingItemProps) => {
           <p className="font-semibold">{booking.user.name}</p>
           <p className="text-sm text-gray-400">{booking.service.name}</p>
           {booking.status === "CONFIRMADO" && (
-            <AdminBookingActions bookingId={booking.id} />
+            <div className="flex flex-wrap items-center gap-2">
+              <AdminBookingActions bookingId={booking.id} />
+              <RescheduleBookingDialog
+                bookingId={booking.id}
+                currentDate={booking.date}
+              />
+            </div>
           )}
         </div>
 
