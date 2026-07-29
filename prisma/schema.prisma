@@ -104,7 +104,12 @@ model Booking {
   service   BarbershopService @relation(fields: [serviceId], references: [id])
   user      User              @relation(fields: [userId], references: [id])
 
-  @@unique([serviceId, date])
+  // Unicidade de (serviceId, date) é garantida por um índice único PARCIAL
+  // criado via SQL cru na migração `booking_partial_unique_active`
+  // (WHERE status <> 'CANCELADO'), de forma que horários cancelados fiquem
+  // livres para novo agendamento. Prisma não expressa índice parcial no
+  // schema declarativo, por isso ele não aparece como @@unique aqui.
+  @@index([serviceId, date])
 }
 
 enum BookingStatus {

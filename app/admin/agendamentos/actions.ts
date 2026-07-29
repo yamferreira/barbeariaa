@@ -72,6 +72,7 @@ export const rescheduleBooking = async (
       serviceId: booking.serviceId,
       date: newDate,
       id: { not: bookingId },
+      status: { not: "CANCELADO" },
     },
   })
 
