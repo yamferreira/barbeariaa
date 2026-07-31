@@ -4,31 +4,33 @@ import Search from "../_components/ui/search"
 import { db } from "../_lib/prisma"
 
 interface BarbershopsPageProps {
-  searchParams: {
+  searchParams: Promise<{
     title?: string
     services?: string
-  }
+  }>
 }
 
 const BarbershopsPage = async ({ searchParams }: BarbershopsPageProps) => {
+  const { title, services } = await searchParams
+
   const barbershops = await db.barbershop.findMany({
     where: {
       OR: [
-        searchParams?.title
+        title
           ? {
               name: {
-                contains: searchParams?.title,
+                contains: title,
                 mode: "insensitive",
               },
             }
           : {},
 
-        searchParams?.services
+        services
           ? {
               services: {
                 some: {
                   name: {
-                    contains: searchParams?.services,
+                    contains: services,
                     mode: "insensitive",
                   },
                 },
@@ -47,7 +49,7 @@ const BarbershopsPage = async ({ searchParams }: BarbershopsPageProps) => {
       </div>
       <div className="px-5">
         <h2 className="mt-6 mb-3 text-xs font-bold text-gray-400 uppercase">
-          Resultados para &quot;{searchParams?.title || searchParams?.services}
+          Resultados para &quot;{title || services}
           &quot;
         </h2>
         <div className="grid grid-cols-2 gap-4">
