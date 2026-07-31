@@ -1,9 +1,10 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { set, startOfDay } from "date-fns"
+import { set } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
+import { toDateOnly } from "@/app/_lib/date-only"
 import { db } from "@/app/_lib/prisma"
 
 export const updateBookingStatus = async (
@@ -75,7 +76,7 @@ export const rescheduleBooking = async (
   }
 
   const blockedDate = await db.blockedDate.findUnique({
-    where: { date: startOfDay(newDate) },
+    where: { date: toDateOnly(newDate) },
   })
   if (blockedDate) {
     return {

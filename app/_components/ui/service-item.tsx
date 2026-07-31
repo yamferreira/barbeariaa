@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react"
 import { format, isSameDay, set, startOfToday } from "date-fns"
 import { signIn, useSession } from "next-auth/react"
 import { createBooking } from "@/app/_actions/create-booking"
+import { fromDateOnly } from "@/app/_lib/date-only"
 import { getBlockedDates } from "@/app/_actions/get-blocked-dates"
 import { getBookings } from "@/app/_actions/get-bookings"
 import { toast } from "sonner"
@@ -72,7 +73,9 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
   const isDateDisabled = (date: Date) => {
     if (date < startOfToday()) return true
     if (date.getDay() === 0) return true
-    return blockedDates.some((blocked) => isSameDay(blocked.date, date))
+    return blockedDates.some((blocked) =>
+      isSameDay(fromDateOnly(blocked.date), date),
+    )
   }
 
   const timeList = useMemo(() => {

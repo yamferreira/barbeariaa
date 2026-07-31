@@ -1,7 +1,7 @@
 "use server"
 
-import { startOfDay } from "date-fns"
 import { Prisma } from "../generated/prisma"
+import { toDateOnly } from "../_lib/date-only"
 import { db } from "../_lib/prisma"
 import { auth } from "../_lib/auth-config"
 
@@ -27,7 +27,7 @@ export const createBooking = async (params: CreateBookingParams) => {
   }
 
   const blockedDate = await db.blockedDate.findUnique({
-    where: { date: startOfDay(params.date) },
+    where: { date: toDateOnly(params.date) },
   })
   if (blockedDate) {
     return {
