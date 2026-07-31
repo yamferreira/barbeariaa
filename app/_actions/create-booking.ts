@@ -1,5 +1,6 @@
 "use server"
 
+import { startOfDay } from "date-fns"
 import { Prisma } from "../generated/prisma"
 import { db } from "../_lib/prisma"
 import { auth } from "../api/auth/[...nextauth]/route"
@@ -15,6 +16,23 @@ export const createBooking = async (params: CreateBookingParams) => {
     return {
       success: false as const,
       message: "Você precisa estar logado para agendar.",
+    }
+  }
+
+  if (params.date.getDay() === 0) {
+    return {
+      success: false as const,
+      message: "Barbearia fechada aos domingos.",
+    }
+  }
+
+  const blockedDate = await db.blockedDate.findUnique({
+    where: { date: startOfDay(params.date) },
+  })
+  if (blockedDate) {
+    return {
+      success: false as const,
+      message: `Indisponível: ${blockedDate.reason ?? "Data bloqueada"}`,
     }
   }
 

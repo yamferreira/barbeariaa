@@ -3,6 +3,7 @@
 import type {
   Barbershop,
   BarbershopService,
+  BlockedDate,
   Booking,
 } from "../../generated/prisma"
 import Image from "next/image"
@@ -18,9 +19,10 @@ import {
 import { Calendar } from "./calendar"
 import { ptBR } from "date-fns/locale"
 import { useEffect, useMemo, useState } from "react"
-import { format, set } from "date-fns"
+import { format, isSameDay, set, startOfToday } from "date-fns"
 import { signIn, useSession } from "next-auth/react"
 import { createBooking } from "@/app/_actions/create-booking"
+import { getBlockedDates } from "@/app/_actions/get-blocked-dates"
 import { getBookings } from "@/app/_actions/get-bookings"
 import { toast } from "sonner"
 
@@ -54,6 +56,11 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
     undefined,
   )
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
+
+  useEffect(() => {
+    getBlockedDates().then(setBlockedDates)
+  }, [])
 
   useEffect(() => {
     if (!selectedDay) return
@@ -61,6 +68,12 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       setDayBookings,
     )
   }, [selectedDay, service.id])
+
+  const isDateDisabled = (date: Date) => {
+    if (date < startOfToday()) return true
+    if (date.getDay() === 0) return true
+    return blockedDates.some((blocked) => isSameDay(blocked.date, date))
+  }
 
   const timeList = useMemo(() => {
     if (!selectedDay) return []
@@ -169,6 +182,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
                     locale={ptBR}
                     selected={selectedDay}
                     onSelect={handleDateSelect}
+                    disabled={isDateDisabled}
                     styles={{
                       head_cell: {
                         width: "100%",

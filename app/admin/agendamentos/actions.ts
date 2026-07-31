@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { set } from "date-fns"
+import { set, startOfDay } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
 import { db } from "@/app/_lib/prisma"
@@ -66,6 +66,23 @@ export const rescheduleBooking = async (
     seconds: 0,
     milliseconds: 0,
   })
+
+  if (newDate.getDay() === 0) {
+    return {
+      success: false as const,
+      message: "Barbearia fechada aos domingos.",
+    }
+  }
+
+  const blockedDate = await db.blockedDate.findUnique({
+    where: { date: startOfDay(newDate) },
+  })
+  if (blockedDate) {
+    return {
+      success: false as const,
+      message: `Indisponível: ${blockedDate.reason ?? "Data bloqueada"}`,
+    }
+  }
 
   const conflictingBooking = await db.booking.findFirst({
     where: {
