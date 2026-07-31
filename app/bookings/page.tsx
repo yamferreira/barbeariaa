@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { auth } from "@/app/api/auth/[...nextauth]/route"
+import { auth } from "@/app/_lib/auth-config"
 import Header from "@/app/_components/ui/header"
 import BookingItem from "@/app/_components/ui/booking-item"
 import {

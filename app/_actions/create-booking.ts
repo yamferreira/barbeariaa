@@ -3,7 +3,7 @@
 import { startOfDay } from "date-fns"
 import { Prisma } from "../generated/prisma"
 import { db } from "../_lib/prisma"
-import { auth } from "../api/auth/[...nextauth]/route"
+import { auth } from "../_lib/auth-config"
 
 interface CreateBookingParams {
   serviceId: string

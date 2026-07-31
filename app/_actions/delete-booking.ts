@@ -1,7 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { auth } from "../api/auth/[...nextauth]/route"
+import { auth } from "../_lib/auth-config"
 import { db } from "../_lib/prisma"
 
 export const deleteBooking = async (bookingId: string) => {
