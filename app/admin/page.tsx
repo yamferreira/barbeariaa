@@ -26,9 +26,14 @@ const AdminPage = async () => {
     <div className="space-y-6 p-5">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold">Agendamentos de hoje</h1>
-        <Link href="/admin/agendamentos" className="text-sm underline">
-          Ver todos os agendamentos
-        </Link>
+        <div className="flex flex-col items-end gap-1">
+          <Link href="/admin/agendamentos" className="text-sm underline">
+            Ver todos os agendamentos
+          </Link>
+          <Link href="/admin/bloqueios" className="text-sm underline">
+            Bloquear dias
+          </Link>
+        </div>
       </div>
 
       {bookings.length === 0 && (
