@@ -117,3 +117,10 @@ enum BookingStatus {
   CONCLUIDO
   CANCELADO
 }
+
+model BlockedDate {
+  id        String   @id @default(uuid())
+  date      DateTime @unique @db.Date
+  reason    String?
+  createdAt DateTime @default(now())
+}
