@@ -3,6 +3,7 @@ import { ptBR } from "date-fns/locale"
 import { db } from "@/app/_lib/prisma"
 import { fromDateOnly } from "@/app/_lib/date-only"
 import BlockDateForm from "@/app/_components/ui/block-date-form"
+import SyncHolidaysButton from "@/app/_components/ui/sync-holidays-button"
 import UnblockDateButton from "@/app/_components/ui/unblock-date-button"
 
 const AdminBloqueiosPage = async () => {
@@ -17,6 +18,17 @@ const AdminBloqueiosPage = async () => {
       <h1 className="text-xl font-bold">Bloquear dias</h1>
 
       <BlockDateForm />
+
+      <div className="space-y-2">
+        <h2 className="text-xs font-bold text-gray-400 uppercase">
+          Feriados nacionais
+        </h2>
+        <p className="text-sm text-gray-400">
+          Bloqueia de uma vez os feriados nacionais deste ano e do próximo.
+          Feriados de dezembro não entram e continuam sendo decisão sua.
+        </p>
+        <SyncHolidaysButton />
+      </div>
 
       <div className="space-y-3">
         <h2 className="text-xs font-bold text-gray-400 uppercase">
