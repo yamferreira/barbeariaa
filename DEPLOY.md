@@ -59,6 +59,68 @@ deploy sem risco:
 2. Aponte `DATABASE_URL` para o branch e rode `npx prisma migrate deploy`.
 3. Confirme que aplicou sem erro; depois descarte o branch.
 
+## Cron: sincronização automática de feriados
+
+O barbeiro pode sincronizar os feriados nacionais à mão em `/admin/bloqueios`,
+mas o mesmo trabalho roda sozinho por uma rota protegida:
+
+```
+GET /api/cron/sync-holidays
+Authorization: Bearer $CRON_SECRET
+```
+
+A rota bloqueia os feriados nacionais deste ano e do próximo (fora dezembro,
+que segue sendo decisão manual). É idempotente: só cria o que ainda não existe
+e nunca mexe em bloqueio manual, então rodar de novo não duplica nada.
+
+### 1. Gere e configure o segredo
+
+```bash
+openssl rand -hex 32
+```
+
+Salve como `CRON_SECRET` nas variáveis de ambiente da produção. **Sem essa
+variável a rota responde 500 e não roda** — ela falha fechada de propósito, pra
+não virar um gatilho público se o deploy esquecer de configurá-la.
+
+### 2. Agende a chamada
+
+Feriado não muda de data no meio do ano, então **uma vez por mês é de sobra**.
+O importante é que rode ao menos uma vez entre outubro e dezembro, que é quando
+o calendário do ano seguinte passa a importar.
+
+- **Vercel** — crie um `vercel.json` na raiz:
+
+  ```json
+  {
+    "crons": [{ "path": "/api/cron/sync-holidays", "schedule": "0 3 1 * *" }]
+  }
+  ```
+
+  A Vercel envia o header `Authorization: Bearer $CRON_SECRET` sozinha quando a
+  variável existe no projeto — não precisa configurar o header à mão. Confira o
+  limite de frequência do seu plano (no Hobby os crons rodam no máximo uma vez
+  por dia, o que já cobre um agendamento mensal).
+
+- **Railway / Render** — crie um cron job no painel apontando pro endpoint:
+
+  ```bash
+  curl -fsS -H "Authorization: Bearer $CRON_SECRET" \
+    https://<seu-host>/api/cron/sync-holidays
+  ```
+
+- **VPS / Docker** — no crontab (`crontab -e`), dia 1 às 3h:
+
+  ```cron
+  0 3 1 * * curl -fsS -H "Authorization: Bearer SEU_SEGREDO" https://<seu-host>/api/cron/sync-holidays
+  ```
+
+### 3. Confira
+
+Uma chamada bem-sucedida responde `{"created":N}`. Erros: `401` (segredo errado
+ou ausente), `500` (`CRON_SECRET` não configurado), `502` (BrasilAPI fora do ar
+— o agendamento seguinte resolve).
+
 ## Notas específicas deste projeto
 
 - A migração `20260729035234_booking_partial_unique_active` usa **SQL cru** para
