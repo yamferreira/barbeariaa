@@ -123,19 +123,34 @@ ou ausente), `500` (`CRON_SECRET` não configurado), `502` (BrasilAPI fora do ar
 
 ## Notas específicas deste projeto
 
-- A migração `20260729035234_booking_partial_unique_active` usa **SQL cru** para
-  criar um índice único **parcial**:
+- As migrações `20260729035234_booking_partial_unique_active` e
+  `20260804021500_booking_partial_unique_by_date` usam **SQL cru** para criar um
+  índice único **parcial**. O estado atual é:
 
   ```sql
-  CREATE UNIQUE INDEX "Booking_serviceId_date_active_key"
-    ON "Booking"("serviceId", "date")
+  CREATE UNIQUE INDEX "Booking_date_active_key"
+    ON "Booking"("date")
     WHERE "status" <> 'CANCELADO';
   ```
 
-  Ele garante no máximo um agendamento **ativo** por `(serviceId, date)`,
-  deixando horários `CANCELADO` livres para novo agendamento. O Prisma não
-  expressa índice parcial no schema declarativo, por isso ele existe só na
-  migração (o schema tem um `@@index` comum no lugar).
+  Ele garante no máximo um agendamento **ativo** por horário, deixando horários
+  `CANCELADO` livres para novo agendamento. O Prisma não expressa índice parcial
+  no schema declarativo, por isso ele existe só na migração (o schema tem um
+  `@@index` comum no lugar).
+
+  A unicidade é por `date`, e não por `(serviceId, date)` como era antes: é um
+  barbeiro só, então um Corte e uma Barba marcados às 10:00 seriam dois clientes
+  no mesmo horário.
+
+  **Atenção no deploy desta migração:** se a base já tiver dois agendamentos
+  ativos no mesmo horário (possível sob o índice antigo), o `CREATE UNIQUE INDEX`
+  **falha** e a migração não aplica. Cheque antes e resolva os conflitos:
+
+  ```sql
+  SELECT "date", COUNT(*) FROM "Booking"
+  WHERE "status" <> 'CANCELADO'
+  GROUP BY "date" HAVING COUNT(*) > 1;
+  ```
 
 - **Advisory lock no Neon:** ao rodar migrações pela conexão _pooled_
   (host com `-pooler`), o Prisma pode falhar com timeout de advisory lock

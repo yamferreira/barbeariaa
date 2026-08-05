@@ -65,10 +65,8 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
 
   useEffect(() => {
     if (!selectedDay) return
-    getBookings({ serviceId: service.id, date: selectedDay }).then(
-      setDayBookings,
-    )
-  }, [selectedDay, service.id])
+    getBookings({ date: selectedDay }).then(setDayBookings)
+  }, [selectedDay])
 
   const isDateDisabled = (date: Date) => {
     if (date < startOfToday()) return true
@@ -125,9 +123,7 @@ const ServiceItem = ({ service, barbershop }: ServiceItemProps) => {
       if (!result.success) {
         toast.error(result.message)
         setSelectedTime(undefined)
-        getBookings({ serviceId: service.id, date: selectedDay }).then(
-          setDayBookings,
-        )
+        getBookings({ date: selectedDay }).then(setDayBookings)
         return
       }
 

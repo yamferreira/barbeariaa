@@ -85,9 +85,11 @@ export const rescheduleBooking = async (
     }
   }
 
+  // Sem filtro por serviço: com um barbeiro só, qualquer agendamento ativo
+  // naquele horário conflita, independente do serviço. Espelha o índice
+  // `Booking_date_active_key`.
   const conflictingBooking = await db.booking.findFirst({
     where: {
-      serviceId: booking.serviceId,
       date: newDate,
       id: { not: bookingId },
       status: { not: "CANCELADO" },
