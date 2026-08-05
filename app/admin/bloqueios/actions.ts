@@ -41,7 +41,7 @@ export const getBookingsOnDate = async (
 
   return bookings.map((booking) => ({
     id: booking.id,
-    clientName: booking.user.name ?? "Cliente sem nome",
+    clientName: booking.user?.name ?? booking.guestName ?? "Cliente sem nome",
     serviceName: booking.service.name,
     time: format(booking.date, "HH:mm"),
   }))

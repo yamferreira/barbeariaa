@@ -10,10 +10,12 @@ import Image from "next/image"
 import { Button } from "./button"
 import { Card, CardContent } from "./card"
 import { Calendar } from "./calendar"
+import { Input } from "./input"
+import { Label } from "./label"
 import { ptBR } from "date-fns/locale"
 import { useEffect, useMemo, useState } from "react"
 import { format, isSameDay, set, startOfToday } from "date-fns"
-import { signIn, useSession } from "next-auth/react"
+import { useSession } from "next-auth/react"
 import { createBooking } from "@/app/_actions/create-booking"
 import { fromDateOnly } from "@/app/_lib/date-only"
 import { getBlockedDates } from "@/app/_actions/get-blocked-dates"
@@ -59,6 +61,10 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   )
   const [dayBookings, setDayBookings] = useState<Booking[]>([])
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
+  const [guestName, setGuestName] = useState("")
+  const [guestPhone, setGuestPhone] = useState("")
+
+  const isGuest = !data?.user
 
   const selectedService = services.find(
     (service) => service.id === selectedServiceId,
@@ -110,11 +116,11 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   }
 
   const handleConfirmClick = async () => {
-    if (!data?.user) {
-      signIn("google")
+    if (!selectedDay || !selectedTime || !selectedService) return
+    if (isGuest && !guestName.trim()) {
+      toast.error("Informe seu nome para agendar.")
       return
     }
-    if (!selectedDay || !selectedTime || !selectedService) return
 
     try {
       const hour = Number(selectedTime.split(":")[0])
@@ -126,6 +132,10 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
       const result = await createBooking({
         serviceId: selectedService.id,
         date: newDate,
+        ...(isGuest && {
+          guestName: guestName.trim(),
+          guestPhone: guestPhone.trim() || undefined,
+        }),
       })
 
       if (!result.success) {
@@ -267,10 +277,35 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
               </Card>
             )}
 
+            {selectedTime && selectedDay && isGuest && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="guest-name">Nome</Label>
+                  <Input
+                    id="guest-name"
+                    placeholder="Seu nome"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="guest-phone">Telefone (opcional)</Label>
+                  <Input
+                    id="guest-phone"
+                    placeholder="(11) 99999-9999"
+                    value={guestPhone}
+                    onChange={(e) => setGuestPhone(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
             <Button
               className="w-full"
               onClick={handleConfirmClick}
-              disabled={!selectedTime || !selectedDay}
+              disabled={
+                !selectedTime || !selectedDay || (isGuest && !guestName.trim())
+              }
             >
               Confirmar
             </Button>

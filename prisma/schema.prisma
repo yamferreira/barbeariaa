@@ -94,15 +94,17 @@ model BarbershopService {
 }
 
 model Booking {
-  id        String            @id @default(uuid())
-  userId    String
-  serviceId String
-  date      DateTime
-  status    BookingStatus     @default(CONFIRMADO)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  service   BarbershopService @relation(fields: [serviceId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
+  id         String            @id @default(uuid())
+  userId     String?
+  guestName  String?
+  guestPhone String?
+  serviceId  String
+  date       DateTime
+  status     BookingStatus     @default(CONFIRMADO)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  service    BarbershopService @relation(fields: [serviceId], references: [id])
+  user       User?             @relation(fields: [userId], references: [id])
 
   // Unicidade de `date` é garantida por um índice único PARCIAL criado via SQL
   // cru na migração `booking_partial_unique_by_date` (WHERE status <>

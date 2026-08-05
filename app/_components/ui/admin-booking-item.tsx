@@ -14,7 +14,7 @@ import RescheduleBookingDialog from "./reschedule-booking-dialog"
 interface AdminBookingItemProps {
   booking: Booking & {
     service: BarbershopService
-    user: User
+    user: User | null
   }
 }
 
@@ -41,7 +41,9 @@ const AdminBookingItem = ({ booking }: AdminBookingItemProps) => {
           <Badge variant={statusVariant[booking.status]}>
             {statusLabel[booking.status]}
           </Badge>
-          <p className="font-semibold">{booking.user.name}</p>
+          <p className="font-semibold">
+            {booking.user?.name ?? booking.guestName ?? "Cliente sem nome"}
+          </p>
           <p className="text-sm text-gray-400">{booking.service.name}</p>
           {booking.status === "CONFIRMADO" && (
             <div className="flex flex-wrap items-center gap-2">

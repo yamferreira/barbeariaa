@@ -8,15 +8,25 @@ import { auth } from "../_lib/auth-config"
 interface CreateBookingParams {
   serviceId: string
   date: Date
+  guestName?: string
+  guestPhone?: string
 }
 
 export const createBooking = async (params: CreateBookingParams) => {
   const session = await auth()
+
+  let guestName: string | undefined
+  let guestPhone: string | undefined
+
   if (!session?.user) {
-    return {
-      success: false as const,
-      message: "Você precisa estar logado para agendar.",
+    guestName = params.guestName?.trim()
+    if (!guestName) {
+      return {
+        success: false as const,
+        message: "Informe seu nome para agendar sem login.",
+      }
     }
+    guestPhone = params.guestPhone?.trim() || undefined
   }
 
   if (params.date.getDay() === 0) {
@@ -39,8 +49,11 @@ export const createBooking = async (params: CreateBookingParams) => {
   try {
     await db.booking.create({
       data: {
-        ...params,
-        userId: session.user.id as string,
+        serviceId: params.serviceId,
+        date: params.date,
+        userId: session?.user?.id as string | undefined,
+        guestName,
+        guestPhone,
       },
     })
     return { success: true as const }
