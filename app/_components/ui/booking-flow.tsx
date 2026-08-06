@@ -9,7 +9,7 @@ import type {
 import Image from "next/image"
 import { Button } from "./button"
 import { Card, CardContent } from "./card"
-import { Calendar } from "./calendar"
+import BookingCalendar from "./booking-calendar"
 import { Input } from "./input"
 import { Label } from "./label"
 import { ptBR } from "date-fns/locale"
@@ -195,35 +195,10 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
               </p>
             </div>
 
-            <Calendar
-              mode="single"
-              locale={ptBR}
+            <BookingCalendar
               selected={selectedDay}
               onSelect={handleDateSelect}
               disabled={isDateDisabled}
-              styles={{
-                head_cell: {
-                  width: "100%",
-                  textTransform: "capitalize",
-                },
-                cell: {
-                  width: "100%",
-                },
-                button: {
-                  width: "100%",
-                },
-                nav_button_previous: {
-                  width: "32px",
-                  height: "32px",
-                },
-                nav_button_next: {
-                  width: "32px",
-                  height: "32px",
-                },
-                caption: {
-                  textTransform: "capitalize",
-                },
-              }}
             />
 
             {selectedDay && timeList.length > 0 && (
