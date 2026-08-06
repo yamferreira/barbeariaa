@@ -1,11 +1,43 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { set } from "date-fns"
+import { endOfDay, format, set, startOfDay } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
 import { toDateOnly } from "@/app/_lib/date-only"
 import { db } from "@/app/_lib/prisma"
+
+/**
+ * Conta agendamentos por dia (yyyy-MM-dd) num intervalo, para os badges do
+ * calendário mensal do admin. Sem filtro de status: espelha a lista de
+ * detalhes da página, que também mostra cancelados.
+ */
+export const getMonthBookingCounts = async ({
+  from,
+  to,
+}: {
+  from: Date
+  to: Date
+}) => {
+  await requireBarbeiro()
+
+  const bookings = await db.booking.findMany({
+    where: {
+      date: {
+        gte: startOfDay(from),
+        lte: endOfDay(to),
+      },
+    },
+    select: { date: true },
+  })
+
+  const counts: Record<string, number> = {}
+  for (const booking of bookings) {
+    const key = format(booking.date, "yyyy-MM-dd")
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+}
 
 export const updateBookingStatus = async (
   bookingId: string,
