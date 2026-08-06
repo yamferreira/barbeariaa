@@ -7,6 +7,7 @@ import type {
   Booking,
 } from "../../generated/prisma"
 import Image from "next/image"
+import { CheckIcon } from "lucide-react"
 import { Button } from "./button"
 import { Card, CardContent } from "./card"
 import BookingCalendar from "./booking-calendar"
@@ -156,33 +157,41 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
 
   return (
     <div className="space-y-5">
-      <div className="flex gap-3 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
-        {services.map((service) => (
-          <button
-            key={service.id}
-            type="button"
-            onClick={() => handleServiceSelect(service.id)}
-            className={cn(
-              "flex min-w-[100px] flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors",
-              selectedServiceId === service.id
-                ? "border-primary bg-primary/10"
-                : "bg-secondary border-transparent",
-            )}
-          >
-            <div className="relative h-14 w-14">
-              <Image
-                src={service.imageUrl}
-                alt={service.name}
-                fill
-                className="rounded-lg object-cover"
-              />
-            </div>
-            <p className="text-xs font-semibold">{service.name}</p>
-            <p className="text-primary text-xs font-bold">
-              {formatPrice(service.price)}
-            </p>
-          </button>
-        ))}
+      <div className="grid max-h-[420px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3">
+        {services.map((service) => {
+          const isSelected = selectedServiceId === service.id
+          return (
+            <button
+              key={service.id}
+              type="button"
+              onClick={() => handleServiceSelect(service.id)}
+              className={cn(
+                "relative flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors",
+                isSelected
+                  ? "border-primary bg-primary/10"
+                  : "bg-secondary hover:border-border border-transparent",
+              )}
+            >
+              {isSelected && (
+                <span className="bg-primary text-primary-foreground absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full">
+                  <CheckIcon className="h-3 w-3" />
+                </span>
+              )}
+              <div className="relative h-14 w-14">
+                <Image
+                  src={service.imageUrl}
+                  alt={service.name}
+                  fill
+                  className="rounded-lg object-cover"
+                />
+              </div>
+              <p className="text-xs font-semibold">{service.name}</p>
+              <p className="text-primary text-xs font-bold">
+                {formatPrice(service.price)}
+              </p>
+            </button>
+          )
+        })}
       </div>
 
       {selectedService && (
