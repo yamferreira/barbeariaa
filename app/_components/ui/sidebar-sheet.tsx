@@ -5,7 +5,6 @@ import { Button } from "./button"
 import { CalendarIcon, HomeIcon, LogInIcon, LogOutIcon } from "lucide-react"
 import { SheetContent, SheetHeader, SheetTitle, SheetClose } from "./sheet"
 import Link from "next/link"
-import { quickSearchOptions } from "@/app/_constants/search"
 import {
   Dialog,
   DialogContent,
@@ -97,24 +96,6 @@ const SideBarSheet = () => {
             </Link>
           </Button>
         </SheetClose>
-      </div>
-
-      <div className="flex flex-col gap-2 border-b border-solid p-5 py-5">
-        {quickSearchOptions.map((option) => (
-          <SheetClose asChild key={option.title}>
-            <Button className="justify-start gap-2" variant="ghost" asChild>
-              <Link href={`/barbershop?services=${option.title}`}>
-                <Image
-                  src={option.imageUrl}
-                  width={18}
-                  height={18}
-                  alt={option.title}
-                />
-                {option.title}
-              </Link>
-            </Button>
-          </SheetClose>
-        ))}
       </div>
 
       <div className="flex flex-col gap-2 p-5 py-5">
