@@ -51,11 +51,20 @@ const formatPrice = (price: number) =>
     price,
   )
 
+const formatDuration = (minutes: number) => {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  if (hours === 0) return `${mins}min`
+  if (mins === 0) return `${hours}h`
+  return `${hours}h${mins}min`
+}
+
 const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   const { data } = useSession()
-  const [selectedServiceId, setSelectedServiceId] = useState<
-    string | undefined
-  >(services[0]?.id)
+  const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(
+    new Set(),
+  )
+  const [showBookingDetails, setShowBookingDetails] = useState(false)
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined)
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
@@ -67,8 +76,15 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
 
   const isGuest = !data?.user
 
-  const selectedService = services.find(
-    (service) => service.id === selectedServiceId,
+  const selectedServices = services.filter((service) =>
+    selectedServiceIds.has(service.id),
+  )
+  // A criação do agendamento ainda é por um único serviço (Booking.serviceId);
+  // até isso mudar, o primeiro serviço selecionado é o usado pra reservar.
+  const selectedService = selectedServices[0]
+  const totalDurationMinutes = selectedServices.reduce(
+    (sum, service) => sum + service.durationMinutes,
+    0,
   )
 
   useEffect(() => {
@@ -101,8 +117,17 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
     })
   }, [selectedDay, dayBookings])
 
-  const handleServiceSelect = (serviceId: string) => {
-    setSelectedServiceId(serviceId)
+  const handleServiceToggle = (serviceId: string) => {
+    setSelectedServiceIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(serviceId)) {
+        next.delete(serviceId)
+      } else {
+        next.add(serviceId)
+      }
+      return next
+    })
+    setShowBookingDetails(false)
     setSelectedDay(undefined)
     setSelectedTime(undefined)
   }
@@ -159,12 +184,13 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
     <div className="space-y-5">
       <div className="grid max-h-[420px] grid-cols-2 gap-3 overflow-y-auto pr-1 sm:grid-cols-3">
         {services.map((service) => {
-          const isSelected = selectedServiceId === service.id
+          const isSelected = selectedServiceIds.has(service.id)
           return (
             <button
               key={service.id}
               type="button"
-              onClick={() => handleServiceSelect(service.id)}
+              aria-pressed={isSelected}
+              onClick={() => handleServiceToggle(service.id)}
               className={cn(
                 "relative flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition-colors",
                 isSelected
@@ -194,7 +220,24 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
         })}
       </div>
 
-      {selectedService && (
+      {selectedServices.length > 0 && (
+        <p className="text-sm text-gray-400">
+          {selectedServices.map((service) => service.name).join(" + ")} ={" "}
+          {formatDuration(totalDurationMinutes)}
+        </p>
+      )}
+
+      {!showBookingDetails && (
+        <Button
+          className="w-full"
+          disabled={selectedServices.length === 0}
+          onClick={() => setShowBookingDetails(true)}
+        >
+          Continuar
+        </Button>
+      )}
+
+      {selectedService && showBookingDetails && (
         <Card>
           <CardContent className="space-y-5 p-5">
             <div>
