@@ -9,8 +9,10 @@ import { db } from "@/app/_lib/prisma"
 
 /**
  * Conta agendamentos por dia (yyyy-MM-dd) num intervalo, para os badges do
- * calendário mensal do admin. Sem filtro de status: espelha a lista de
- * detalhes da página, que também mostra cancelados.
+ * calendário mensal do admin. Conta só CONFIRMADO (o que ainda vai
+ * acontecer): cancelados e concluídos ficam fora do resumo, um dia só com
+ * eles aparece sem indicador. A lista de detalhes da página continua
+ * mostrando todos os status, com a marcação visual que já os diferencia.
  */
 export const getMonthBookingCounts = async ({
   from,
@@ -27,6 +29,7 @@ export const getMonthBookingCounts = async ({
         gte: startOfDay(from),
         lte: endOfDay(to),
       },
+      status: "CONFIRMADO",
     },
     select: { date: true },
   })

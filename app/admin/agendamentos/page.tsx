@@ -31,9 +31,11 @@ const AdminAgendamentosPage = async ({
         service: true,
         user: true,
       },
-      orderBy: {
-        date: "asc",
-      },
+      // BookingStatus é um enum nativo do Postgres declarado como
+      // CONFIRMADO, CONCLUIDO, CANCELADO (nessa ordem) — ordenar por ele
+      // agrupa nessa mesma prioridade, com horário como desempate dentro
+      // de cada grupo.
+      orderBy: [{ status: "asc" }, { date: "asc" }],
     }),
     getMonthBookingCounts({ from: gridStart, to: gridEnd }),
   ])
