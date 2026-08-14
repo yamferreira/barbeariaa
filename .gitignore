@@ -50,3 +50,6 @@ build/
 *.jar
 *.class
 .clone
+
+# snapshots do banco: contêm dados de clientes e tokens de sessão/OAuth
+/backups

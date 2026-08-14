@@ -34,9 +34,8 @@ type ServiceWithNumberPrice = Omit<BarbershopService, "price"> & {
   price: number
 }
 
-type BookingWithDuration = Booking & {
-  service: Pick<BarbershopService, "durationMinutes">
-}
+/** O que `getBookings` entrega: só o intervalo ocupado, sem dados do cliente. */
+type DayBooking = Pick<Booking, "date" | "durationMinutes">
 
 interface BookingFlowProps {
   services: ServiceWithNumberPrice[]
@@ -71,7 +70,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
   )
-  const [dayBookings, setDayBookings] = useState<BookingWithDuration[]>([])
+  const [dayBookings, setDayBookings] = useState<DayBooking[]>([])
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
   const [guestName, setGuestName] = useState("")
   const [guestPhone, setGuestPhone] = useState("")
@@ -81,13 +80,17 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   const selectedServices = services.filter((service) =>
     selectedServiceIds.has(service.id),
   )
-  // A criação do agendamento ainda é por um único serviço (Booking.serviceId);
-  // até isso mudar, o primeiro serviço selecionado é o usado pra reservar.
-  const selectedService = selectedServices[0]
   const totalDurationMinutes = selectedServices.reduce(
     (sum, service) => sum + service.durationMinutes,
     0,
   )
+  const totalPrice = selectedServices.reduce(
+    (sum, service) => sum + service.price,
+    0,
+  )
+  const selectedServicesLabel = selectedServices
+    .map((service) => service.name)
+    .join(" + ")
 
   useEffect(() => {
     getBlockedDates().then(setBlockedDates)
@@ -135,7 +138,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
           start,
           end,
           booking.date,
-          getBookingEnd(booking.date, booking.service.durationMinutes),
+          getBookingEnd(booking.date, booking.durationMinutes),
         ),
       )
     })
@@ -166,7 +169,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   }
 
   const handleConfirmClick = async () => {
-    if (!selectedDay || !selectedTime || !selectedService) return
+    if (!selectedDay || !selectedTime || selectedServices.length === 0) return
     if (isGuest && !guestName.trim()) {
       toast.error("Informe seu nome para agendar.")
       return
@@ -180,7 +183,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
         hours: hour,
       })
       const result = await createBooking({
-        serviceId: selectedService.id,
+        serviceIds: selectedServices.map((service) => service.id),
         date: newDate,
         ...(isGuest && {
           guestName: guestName.trim(),
@@ -246,8 +249,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
 
       {selectedServices.length > 0 && (
         <p className="text-sm text-gray-400">
-          {selectedServices.map((service) => service.name).join(" + ")} ={" "}
-          {formatDuration(totalDurationMinutes)}
+          {selectedServicesLabel} = {formatDuration(totalDurationMinutes)}
         </p>
       )}
 
@@ -261,13 +263,13 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
         </Button>
       )}
 
-      {selectedService && showBookingDetails && (
+      {selectedServices.length > 0 && showBookingDetails && (
         <Card>
           <CardContent className="space-y-5 p-5">
             <div>
-              <h3 className="font-semibold">{selectedService.name}</h3>
+              <h3 className="font-semibold">{selectedServicesLabel}</h3>
               <p className="text-sm text-gray-400">
-                {selectedService.description}
+                {formatDuration(totalDurationMinutes)}
               </p>
             </div>
 
@@ -302,9 +304,9 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
               <Card>
                 <CardContent className="space-y-3 p-3">
                   <div className="flex items-center justify-between">
-                    <h2 className="font-bold">{selectedService.name}</h2>
+                    <h2 className="font-bold">{selectedServicesLabel}</h2>
                     <p className="text-sm font-bold">
-                      {formatPrice(selectedService.price)}
+                      {formatPrice(totalPrice)}
                     </p>
                   </div>
 

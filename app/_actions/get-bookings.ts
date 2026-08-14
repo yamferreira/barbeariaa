@@ -16,7 +16,12 @@ interface GetBookingsParams {
  * com `WHERE status <> 'CANCELADO'` — horário cancelado volta a ficar livre.
  *
  * `durationMinutes` vem junto porque um agendamento ocupa um intervalo, não um
- * ponto: quem monta a lista de horários precisa saber onde cada um termina.
+ * ponto: quem monta a lista de horários precisa saber onde cada um termina. É
+ * a coluna do próprio Booking, e não a do serviço, porque um agendamento com
+ * vários serviços ocupa a soma das durações deles.
+ *
+ * O retorno é enxuto de propósito: isso atravessa para o client, e a lista de
+ * horários não precisa saber quem reservou o quê.
  */
 export const getBookings = async ({ date }: GetBookingsParams) => {
   return db.booking.findMany({
@@ -27,9 +32,7 @@ export const getBookings = async ({ date }: GetBookingsParams) => {
       },
       status: { not: "CANCELADO" },
     },
-    include: {
-      service: { select: { durationMinutes: true } },
-    },
+    select: { date: true, durationMinutes: true },
   })
 }
 

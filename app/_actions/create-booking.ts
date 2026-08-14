@@ -13,7 +13,7 @@ import {
 import { auth } from "../_lib/auth-config"
 
 interface CreateBookingParams {
-  serviceId: string
+  serviceIds: string[]
   date: Date
   guestName?: string
   guestPhone?: string
@@ -57,19 +57,38 @@ export const createBooking = async (params: CreateBookingParams) => {
   // `date` idêntica, e um agendamento ocupa um intervalo: às 11:00 com 70min
   // atropela o das 12:00 sem repetir a data. A lista de horários do client
   // filtra isso por conveniência, mas pode estar desatualizada.
-  const service = await db.barbershopService.findUnique({
-    where: { id: params.serviceId },
-    select: { durationMinutes: true },
+  // Repetir o mesmo serviço não muda nada para o cliente e a chave composta de
+  // BookingService recusaria a segunda linha, então o pedido é normalizado.
+  const serviceIds = [...new Set(params.serviceIds)]
+
+  if (serviceIds.length === 0) {
+    return {
+      success: false as const,
+      message: "Selecione pelo menos um serviço.",
+    }
+  }
+
+  const services = await db.barbershopService.findMany({
+    where: { id: { in: serviceIds } },
+    select: { id: true, durationMinutes: true },
   })
-  if (!service) {
+
+  // `findMany` devolve só o que existe: se veio menos do que foi pedido, algum
+  // id é inválido e o agendamento não pode ser criado pela metade.
+  if (services.length !== serviceIds.length) {
     return {
       success: false as const,
       message: "Serviço não encontrado.",
     }
   }
 
+  const totalDurationMinutes = services.reduce(
+    (sum, service) => sum + service.durationMinutes,
+    0,
+  )
+
   const newStart = params.date
-  const newEnd = getBookingEnd(newStart, service.durationMinutes)
+  const newEnd = getBookingEnd(newStart, totalDurationMinutes)
 
   if (newEnd > getClosingTime(newStart)) {
     return {
@@ -86,9 +105,10 @@ export const createBooking = async (params: CreateBookingParams) => {
       },
       status: { not: "CANCELADO" },
     },
-    include: {
-      service: { select: { durationMinutes: true } },
-    },
+    // A duração vem da coluna do próprio Booking, não do serviço: um
+    // agendamento com vários serviços ocupa a soma deles, e ler pelo serviço
+    // antigo devolveria só a primeira parcela.
+    select: { date: true, durationMinutes: true },
   })
 
   const hasConflict = dayBookings.some((booking) =>
@@ -96,7 +116,7 @@ export const createBooking = async (params: CreateBookingParams) => {
       newStart,
       newEnd,
       booking.date,
-      getBookingEnd(booking.date, booking.service.durationMinutes),
+      getBookingEnd(booking.date, booking.durationMinutes),
     ),
   )
 
@@ -110,11 +130,19 @@ export const createBooking = async (params: CreateBookingParams) => {
   try {
     await db.booking.create({
       data: {
-        serviceId: params.serviceId,
         date: params.date,
+        durationMinutes: totalDurationMinutes,
         userId: session?.user?.id as string | undefined,
         guestName,
         guestPhone,
+        services: {
+          create: serviceIds.map((serviceId) => ({ serviceId })),
+        },
+        // Coluna antiga, ainda NOT NULL até a migração que a remove. Segue
+        // preenchida com o primeiro serviço para que as telas que leem
+        // `booking.service` (admin, histórico, bloqueios) continuem
+        // funcionando enquanto o código migra para `booking.services`.
+        serviceId: serviceIds[0],
       },
     })
     return { success: true as const }
