@@ -21,11 +21,21 @@ import { createBooking } from "@/app/_actions/create-booking"
 import { fromDateOnly } from "@/app/_lib/date-only"
 import { getBlockedDates } from "@/app/_actions/get-blocked-dates"
 import { getBookings } from "@/app/_actions/get-bookings"
+import {
+  formatDuration,
+  getBookingEnd,
+  getClosingTime,
+  intervalsOverlap,
+} from "@/app/_lib/schedule"
 import { cn } from "@/app/_lib/utils"
 import { toast } from "sonner"
 
 type ServiceWithNumberPrice = Omit<BarbershopService, "price"> & {
   price: number
+}
+
+type BookingWithDuration = Booking & {
+  service: Pick<BarbershopService, "durationMinutes">
 }
 
 interface BookingFlowProps {
@@ -51,14 +61,6 @@ const formatPrice = (price: number) =>
     price,
   )
 
-const formatDuration = (minutes: number) => {
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  if (hours === 0) return `${mins}min`
-  if (mins === 0) return `${hours}h`
-  return `${hours}h${mins}min`
-}
-
 const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   const { data } = useSession()
   const [selectedServiceIds, setSelectedServiceIds] = useState<Set<string>>(
@@ -69,7 +71,7 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
   const [selectedTime, setSelectedTime] = useState<string | undefined>(
     undefined,
   )
-  const [dayBookings, setDayBookings] = useState<Booking[]>([])
+  const [dayBookings, setDayBookings] = useState<BookingWithDuration[]>([])
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([])
   const [guestName, setGuestName] = useState("")
   const [guestPhone, setGuestPhone] = useState("")
@@ -104,18 +106,40 @@ const BookingFlow = ({ services, barbershop }: BookingFlowProps) => {
     )
   }
 
+  // Um horário só entra na lista se o intervalo inteiro do novo agendamento
+  // (início até início + duração total dos serviços marcados) couber antes do
+  // fechamento e não colidir com nenhum agendamento ativo do dia — e cada um
+  // deles também ocupa um intervalo, não só o instante em que começa.
+  //
+  // Isso é só conveniência de UX: a validação que vale é a do servidor, em
+  // createBooking.
   const timeList = useMemo(() => {
-    if (!selectedDay) return []
+    if (!selectedDay || totalDurationMinutes === 0) return []
+    const closingTime = getClosingTime(selectedDay)
+
     return TIME_LIST.filter((time) => {
       const hour = Number(time.split(":")[0])
       const minutes = Number(time.split(":")[1])
-      return !dayBookings.some(
-        (booking) =>
-          booking.date.getHours() === hour &&
-          booking.date.getMinutes() === minutes,
+      const start = set(selectedDay, {
+        hours: hour,
+        minutes,
+        seconds: 0,
+        milliseconds: 0,
+      })
+      const end = getBookingEnd(start, totalDurationMinutes)
+
+      if (end > closingTime) return false
+
+      return !dayBookings.some((booking) =>
+        intervalsOverlap(
+          start,
+          end,
+          booking.date,
+          getBookingEnd(booking.date, booking.service.durationMinutes),
+        ),
       )
     })
-  }, [selectedDay, dayBookings])
+  }, [selectedDay, dayBookings, totalDurationMinutes])
 
   const handleServiceToggle = (serviceId: string) => {
     setSelectedServiceIds((prev) => {

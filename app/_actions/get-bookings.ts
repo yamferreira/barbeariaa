@@ -14,6 +14,9 @@ interface GetBookingsParams {
  * agendamento ativo às 10:00 ocupa as 10:00, seja Corte ou Barba. Os dois
  * filtros espelham o índice `Booking_date_active_key`, que é unique em `date`
  * com `WHERE status <> 'CANCELADO'` — horário cancelado volta a ficar livre.
+ *
+ * `durationMinutes` vem junto porque um agendamento ocupa um intervalo, não um
+ * ponto: quem monta a lista de horários precisa saber onde cada um termina.
  */
 export const getBookings = async ({ date }: GetBookingsParams) => {
   return db.booking.findMany({
@@ -23,6 +26,9 @@ export const getBookings = async ({ date }: GetBookingsParams) => {
         lte: endOfDay(date),
       },
       status: { not: "CANCELADO" },
+    },
+    include: {
+      service: { select: { durationMinutes: true } },
     },
   })
 }
