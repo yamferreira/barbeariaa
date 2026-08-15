@@ -5,6 +5,12 @@ import { endOfDay, format, set, startOfDay } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
 import { toDateOnly } from "@/app/_lib/date-only"
+import {
+  CLOSING_HOUR,
+  getBookingEnd,
+  getClosingTime,
+  intervalsOverlap,
+} from "@/app/_lib/schedule"
 import { db } from "@/app/_lib/prisma"
 
 /**
@@ -120,18 +126,49 @@ export const rescheduleBooking = async (
     }
   }
 
+  // A duração vem da coluna do próprio Booking, não do serviço: o agendamento
+  // pode ter vários serviços e ocupa a soma deles, e ler pelo serviço legado
+  // devolveria só a primeira parcela.
+  const newEnd = getBookingEnd(newDate, booking.durationMinutes)
+
+  // O agendamento tem que caber inteiro no expediente: às 19:30 um de 1h
+  // terminaria depois do fechamento.
+  if (newEnd > getClosingTime(newDate)) {
+    return {
+      success: false as const,
+      message: `Esse horário ultrapassa o fechamento (${CLOSING_HOUR}h). Escolha outro.`,
+    }
+  }
+
+  // Conflito é de intervalo, não de horário exato. Um agendamento ocupa
+  // [date, date + durationMinutes), então reagendar para 11:00 algo de 70min
+  // atropela o das 12:00 sem repetir a data — que é tudo que o índice único
+  // parcial `Booking_date_active_key` pega sozinho.
+  //
   // Sem filtro por serviço: com um barbeiro só, qualquer agendamento ativo
-  // naquele horário conflita, independente do serviço. Espelha o índice
-  // `Booking_date_active_key`.
-  const conflictingBooking = await db.booking.findFirst({
+  // naquele intervalo conflita, independente do serviço.
+  const dayBookings = await db.booking.findMany({
     where: {
-      date: newDate,
+      date: {
+        gte: startOfDay(newDate),
+        lte: endOfDay(newDate),
+      },
       id: { not: bookingId },
       status: { not: "CANCELADO" },
     },
+    select: { date: true, durationMinutes: true },
   })
 
-  if (conflictingBooking) {
+  const hasConflict = dayBookings.some((other) =>
+    intervalsOverlap(
+      newDate,
+      newEnd,
+      other.date,
+      getBookingEnd(other.date, other.durationMinutes),
+    ),
+  )
+
+  if (hasConflict) {
     return {
       success: false as const,
       message: "Já existe um agendamento nesse horário.",
