@@ -2,12 +2,18 @@ import { db } from "@/app/_lib/prisma"
 import { ChevronLeftIcon, MapPinIcon, MenuIcon, StarIcon } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/app/_components/ui/button"
+import { Card, CardContent } from "@/app/_components/ui/card"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import ServiceItem from "@/app/_components/ui/service-item"
 import PhoneItem from "@/app/_components/ui/phone-item"
 import { Sheet, SheetTrigger } from "@/app/_components/ui/sheet"
 import SidebarSheet from "@/app/_components/ui/sidebar-sheet"
+import { formatDuration } from "@/app/_lib/schedule"
+
+const formatPrice = (price: number) =>
+  Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    price,
+  )
 
 interface BarbershopPageProps {
   params: Promise<{
@@ -94,18 +100,42 @@ const BarbershopPage = async ({ params }: BarbershopPageProps) => {
         <p className="text-justify text-sm">{barbershop?.description}</p>
       </div>
 
-      {/* Services */}
+      {/* Services — vitrine só de leitura: o agendamento acontece na home. */}
       <div className="space-y-3 border-b border-solid p-5">
         <h2 className="text-xs font-bold text-gray-400 uppercase">Serviços</h2>
         <div className="space-y-3">
           {services.map((service) => (
-            <ServiceItem
-              key={service.id}
-              barbershop={{ name: barbershop.name }}
-              service={service}
-            />
+            <Card key={service.id}>
+              <CardContent className="flex items-center gap-3 p-3">
+                <div className="relative max-h-[110px] min-h-[110px] max-w-[110px] min-w-[110px]">
+                  <Image
+                    src={service.imageUrl}
+                    alt={service.name}
+                    fill
+                    className="rounded-lg object-cover"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">{service.name}</h3>
+                  <p className="text-sm text-gray-400">{service.description}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-primary text-sm font-bold">
+                      {formatPrice(service.price)}
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {formatDuration(service.durationMinutes)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
+
+        <Button className="w-full" asChild>
+          <Link href="/">Agendar</Link>
+        </Button>
       </div>
 
       {/* CONTATO */}

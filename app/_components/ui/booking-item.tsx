@@ -4,6 +4,10 @@ import { Avatar, AvatarImage } from "./avatar"
 import { Badge } from "./badge"
 import CancelBookingDialog from "./cancel-booking-dialog"
 import { Card, CardContent } from "./card"
+import {
+  formatBookingEnd,
+  formatServiceNames,
+} from "../../_lib/booking-display"
 import type {
   Barbershop,
   Booking,
@@ -12,14 +16,19 @@ import type {
 
 interface BookingItemProps {
   booking: Booking & {
-    service: BarbershopService & {
-      barbershop: Barbershop
-    }
+    services: {
+      service: BarbershopService & {
+        barbershop: Barbershop
+      }
+    }[]
   }
 }
 
 const BookingItem = ({ booking }: BookingItemProps) => {
   const isConfirmed = isFuture(booking.date)
+  // Todo serviço do agendamento é da mesma barbearia, então o primeiro
+  // responde por todos.
+  const barbershop = booking.services[0]?.service.barbershop
 
   return (
     <Card>
@@ -32,16 +41,18 @@ const BookingItem = ({ booking }: BookingItemProps) => {
           >
             {isConfirmed ? "Confirmado" : "Finalizado"}
           </Badge>
-          <h3 className="truncate font-semibold">{booking.service.name}</h3>
+          <h3 className="truncate font-semibold">
+            {formatServiceNames(booking.services)}
+          </h3>
 
-          <div className="flex min-w-0 items-center gap-2">
-            <Avatar className="h-6 w-6 shrink-0">
-              <AvatarImage src={booking.service.barbershop.imageUrl} />
-            </Avatar>
-            <p className="truncate text-sm">
-              {booking.service.barbershop.name}
-            </p>
-          </div>
+          {barbershop && (
+            <div className="flex min-w-0 items-center gap-2">
+              <Avatar className="h-6 w-6 shrink-0">
+                <AvatarImage src={barbershop.imageUrl} />
+              </Avatar>
+              <p className="truncate text-sm">{barbershop.name}</p>
+            </div>
+          )}
 
           {isConfirmed && <CancelBookingDialog bookingId={booking.id} />}
         </div>
@@ -51,7 +62,12 @@ const BookingItem = ({ booking }: BookingItemProps) => {
             {format(booking.date, "MMMM", { locale: ptBR })}
           </p>
           <p className="text-2xl">{format(booking.date, "dd")}</p>
+          {/* Com vários serviços o início sozinho não diz quanto tempo o
+              cliente vai ficar; a faixa diz. */}
           <p className="text-sm">{format(booking.date, "HH:mm")}</p>
+          <p className="text-xs text-gray-400">
+            até {formatBookingEnd(booking.date, booking.durationMinutes)}
+          </p>
         </div>
       </CardContent>
     </Card>

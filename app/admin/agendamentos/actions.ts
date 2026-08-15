@@ -1,11 +1,52 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { set } from "date-fns"
+import { endOfDay, format, set, startOfDay } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
 import { toDateOnly } from "@/app/_lib/date-only"
+import {
+  CLOSING_HOUR,
+  getBookingEnd,
+  getClosingTime,
+  intervalsOverlap,
+} from "@/app/_lib/schedule"
 import { db } from "@/app/_lib/prisma"
+
+/**
+ * Conta agendamentos por dia (yyyy-MM-dd) num intervalo, para os badges do
+ * calendário mensal do admin. Conta só CONFIRMADO (o que ainda vai
+ * acontecer): cancelados e concluídos ficam fora do resumo, um dia só com
+ * eles aparece sem indicador. A lista de detalhes da página continua
+ * mostrando todos os status, com a marcação visual que já os diferencia.
+ */
+export const getMonthBookingCounts = async ({
+  from,
+  to,
+}: {
+  from: Date
+  to: Date
+}) => {
+  await requireBarbeiro()
+
+  const bookings = await db.booking.findMany({
+    where: {
+      date: {
+        gte: startOfDay(from),
+        lte: endOfDay(to),
+      },
+      status: "CONFIRMADO",
+    },
+    select: { date: true },
+  })
+
+  const counts: Record<string, number> = {}
+  for (const booking of bookings) {
+    const key = format(booking.date, "yyyy-MM-dd")
+    counts[key] = (counts[key] ?? 0) + 1
+  }
+  return counts
+}
 
 export const updateBookingStatus = async (
   bookingId: string,
@@ -85,16 +126,49 @@ export const rescheduleBooking = async (
     }
   }
 
-  const conflictingBooking = await db.booking.findFirst({
+  // A duração vem da coluna do próprio Booking, não do serviço: o agendamento
+  // pode ter vários serviços e ocupa a soma deles, e ler pelo serviço legado
+  // devolveria só a primeira parcela.
+  const newEnd = getBookingEnd(newDate, booking.durationMinutes)
+
+  // O agendamento tem que caber inteiro no expediente: às 19:30 um de 1h
+  // terminaria depois do fechamento.
+  if (newEnd > getClosingTime(newDate)) {
+    return {
+      success: false as const,
+      message: `Esse horário ultrapassa o fechamento (${CLOSING_HOUR}h). Escolha outro.`,
+    }
+  }
+
+  // Conflito é de intervalo, não de horário exato. Um agendamento ocupa
+  // [date, date + durationMinutes), então reagendar para 11:00 algo de 70min
+  // atropela o das 12:00 sem repetir a data — que é tudo que o índice único
+  // parcial `Booking_date_active_key` pega sozinho.
+  //
+  // Sem filtro por serviço: com um barbeiro só, qualquer agendamento ativo
+  // naquele intervalo conflita, independente do serviço.
+  const dayBookings = await db.booking.findMany({
     where: {
-      serviceId: booking.serviceId,
-      date: newDate,
+      date: {
+        gte: startOfDay(newDate),
+        lte: endOfDay(newDate),
+      },
       id: { not: bookingId },
       status: { not: "CANCELADO" },
     },
+    select: { date: true, durationMinutes: true },
   })
 
-  if (conflictingBooking) {
+  const hasConflict = dayBookings.some((other) =>
+    intervalsOverlap(
+      newDate,
+      newEnd,
+      other.date,
+      getBookingEnd(other.date, other.durationMinutes),
+    ),
+  )
+
+  if (hasConflict) {
     return {
       success: false as const,
       message: "Já existe um agendamento nesse horário.",

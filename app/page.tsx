@@ -1,12 +1,7 @@
 import Header from "./_components/ui/header"
-import { Button } from "./_components/ui/button"
-import Image from "next/image"
 import { db } from "./_lib/prisma"
-import BarbershopItem from "./_components/ui/barbershop-item"
-import { quickSearchOptions } from "./_constants/search"
 import BookingItem from "./_components/ui/booking-item"
-import Search from "./_components/ui/search"
-import Link from "next/link"
+import BookingFlow from "./_components/ui/booking-flow"
 import { auth } from "./_lib/auth-config"
 import { getConfirmedBookings } from "./_actions/get-bookings"
 import { format } from "date-fns"
@@ -14,11 +9,8 @@ import { ptBR } from "date-fns/locale"
 
 const Home = async () => {
   const session = await auth()
-  const barbershop = await db.barbershop.findMany({})
-  const popularBarbershops = await db.barbershop.findMany({
-    orderBy: {
-      name: "desc",
-    },
+  const barbershop = await db.barbershop.findFirst({
+    include: { services: true },
   })
   const confirmedBookings = session?.user
     ? await getConfirmedBookings(session.user.id as string)
@@ -27,58 +19,30 @@ const Home = async () => {
   const today = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR })
   const capitalizedToday = today.charAt(0).toUpperCase() + today.slice(1)
 
+  const services = barbershop
+    ? barbershop.services.map((service) => ({
+        ...service,
+        price: Number(service.price),
+      }))
+    : []
+
   return (
     <div>
-      {/* header */}
       <Header />
-      <div className="p-5">
-        <h2 className="text-xl font-bold">
-          Olá{firstName ? `, ${firstName}` : ""}!
-        </h2>
-        <p>{capitalizedToday}.</p>
-
-        {/* search input */}
-        <div className="mt-6">
-          <Search />
+      <div className="space-y-6 p-5">
+        <div>
+          <h2 className="text-xl font-bold">
+            Olá{firstName ? `, ${firstName}` : ""}!
+          </h2>
+          <p className="text-sm text-gray-400">
+            {barbershop ? `${barbershop.name} · ` : ""}
+            {capitalizedToday}.
+          </p>
         </div>
 
-        {/*quick search */}
-
-        <div className="mt-6 flex gap-3 overflow-x-scroll [&::-webkit-scrollbar]:hidden">
-          {quickSearchOptions.map((option) => (
-            <Button
-              key={option.title}
-              className="gap-2"
-              variant="secondary"
-              asChild
-            >
-              <Link href={`/barbershop?services=${option.title}`}>
-                <Image
-                  src={option.imageUrl}
-                  width={16}
-                  height={16}
-                  alt={option.title}
-                />
-                {option.title}
-              </Link>
-            </Button>
-          ))}
-        </div>
-
-        {/* banner image */}
-        <div className="relative mt-6 h-[150px] w-full">
-          <Image
-            src="/bannerluiz.png"
-            fill
-            className="rounded-xl object-cover"
-            alt="Banner"
-          />
-        </div>
-
-        {/* booking */}
         {confirmedBookings.length > 0 && (
-          <>
-            <h2 className="mt-6 mb-3 text-xs font-bold text-gray-400 uppercase">
+          <div>
+            <h2 className="mb-3 text-xs font-bold text-gray-400 uppercase">
               Agendamentos
             </h2>
             <div className="space-y-3">
@@ -86,27 +50,23 @@ const Home = async () => {
                 <BookingItem key={booking.id} booking={booking} />
               ))}
             </div>
-          </>
+          </div>
         )}
 
-        <h2 className="mt-6 mb-3 text-xs font-bold text-gray-400 uppercase">
-          Recomendados
-        </h2>
-
-        <div className="flex gap-4 overflow-auto [&::-webkit-scrollbar]:hidden">
-          {barbershop.map((barbershop) => (
-            <BarbershopItem key={barbershop.id} barbershop={barbershop} />
-          ))}
-        </div>
-
-        <h2 className="mt-6 mb-3 text-xs font-bold text-gray-400 uppercase">
-          Populares
-        </h2>
-
-        <div className="flex gap-4 overflow-auto [&::-webkit-scrollbar]:hidden">
-          {popularBarbershops.map((barbershop) => (
-            <BarbershopItem key={barbershop.id} barbershop={barbershop} />
-          ))}
+        <div>
+          <h2 className="mb-3 text-xs font-bold text-gray-400 uppercase">
+            Novo agendamento
+          </h2>
+          {barbershop ? (
+            <BookingFlow
+              services={services}
+              barbershop={{ name: barbershop.name }}
+            />
+          ) : (
+            <p className="text-sm text-gray-400">
+              Nenhuma barbearia cadastrada ainda.
+            </p>
+          )}
         </div>
       </div>
     </div>

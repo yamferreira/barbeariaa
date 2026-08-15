@@ -11,6 +11,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // (app/generated/prisma), so it's a structurally different type at compile
   // time even though it's the same class at runtime.
   adapter: PrismaAdapter(db as unknown as PrismaClient) as Adapter,
+  session: {
+    strategy: "database",
+    maxAge: 60 * 60 * 24 * 90, // 90 dias
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,

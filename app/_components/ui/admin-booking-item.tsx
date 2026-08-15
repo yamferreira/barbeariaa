@@ -6,6 +6,10 @@ import type {
   User,
   BookingStatus,
 } from "@/app/generated/prisma"
+import {
+  formatBookingEnd,
+  formatServiceNames,
+} from "@/app/_lib/booking-display"
 import { Card, CardContent } from "./card"
 import { Badge } from "./badge"
 import AdminBookingActions from "./admin-booking-actions"
@@ -13,8 +17,8 @@ import RescheduleBookingDialog from "./reschedule-booking-dialog"
 
 interface AdminBookingItemProps {
   booking: Booking & {
-    service: BarbershopService
-    user: User
+    services: { service: BarbershopService }[]
+    user: User | null
   }
 }
 
@@ -41,8 +45,12 @@ const AdminBookingItem = ({ booking }: AdminBookingItemProps) => {
           <Badge variant={statusVariant[booking.status]}>
             {statusLabel[booking.status]}
           </Badge>
-          <p className="font-semibold">{booking.user.name}</p>
-          <p className="text-sm text-gray-400">{booking.service.name}</p>
+          <p className="font-semibold">
+            {booking.user?.name ?? booking.guestName ?? "Cliente sem nome"}
+          </p>
+          <p className="text-sm text-gray-400">
+            {formatServiceNames(booking.services)}
+          </p>
           {booking.status === "CONFIRMADO" && (
             <div className="flex flex-wrap items-center gap-2">
               <AdminBookingActions bookingId={booking.id} />
@@ -54,9 +62,16 @@ const AdminBookingItem = ({ booking }: AdminBookingItemProps) => {
           )}
         </div>
 
-        <p className="text-lg font-bold">
-          {format(booking.date, "HH:mm", { locale: ptBR })}
-        </p>
+        {/* O barbeiro precisa da faixa, não do início: é ela que diz quando a
+            cadeira volta a ficar livre. */}
+        <div className="shrink-0 text-right">
+          <p className="text-lg font-bold">
+            {format(booking.date, "HH:mm", { locale: ptBR })}
+          </p>
+          <p className="text-xs text-gray-400">
+            até {formatBookingEnd(booking.date, booking.durationMinutes)}
+          </p>
+        </div>
       </CardContent>
     </Card>
   )

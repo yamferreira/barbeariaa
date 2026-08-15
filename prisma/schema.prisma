@@ -5,7 +5,12 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // Runtime do app: endpoint com pooler (PgBouncer em transaction mode).
   url      = env("DATABASE_URL")
+  // Migrations: endpoint direto, mesmo host sem o sufixo `-pooler`. O Prisma
+  // Migrate usa advisory locks, que são de sessão e não sobrevivem ao
+  // transaction pooling — por ali uma migração longa pode travar no meio.
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
@@ -81,35 +86,69 @@ model Barbershop {
 }
 
 model BarbershopService {
-  id           String     @id @default(uuid())
-  barbershopId String
-  name         String
-  description  String
-  imageUrl     String
-  price        Decimal    @db.Decimal(10, 2)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  barbershop   Barbershop @relation(fields: [barbershopId], references: [id])
-  bookings     Booking[]
+  id              String           @id @default(uuid())
+  barbershopId    String
+  name            String
+  description     String
+  imageUrl        String
+  price           Decimal          @db.Decimal(10, 2)
+  durationMinutes Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  barbershop      Barbershop       @relation(fields: [barbershopId], references: [id])
+  // `bookings` é a relação antiga (1 serviço por agendamento) e existe só
+  // durante a transição para `bookingServices`. Sai na migração seguinte.
+  bookings        Booking[]
+  bookingServices BookingService[]
 }
 
 model Booking {
-  id        String            @id @default(uuid())
-  userId    String
-  serviceId String
-  date      DateTime
-  status    BookingStatus     @default(CONFIRMADO)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  service   BarbershopService @relation(fields: [serviceId], references: [id])
-  user      User              @relation(fields: [userId], references: [id])
+  id         String            @id @default(uuid())
+  userId     String?
+  guestName  String?
+  guestPhone String?
+  date       DateTime
+  status     BookingStatus     @default(CONFIRMADO)
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  user       User?             @relation(fields: [userId], references: [id])
 
-  // Unicidade de (serviceId, date) é garantida por um índice único PARCIAL
-  // criado via SQL cru na migração `booking_partial_unique_active`
-  // (WHERE status <> 'CANCELADO'), de forma que horários cancelados fiquem
-  // livres para novo agendamento. Prisma não expressa índice parcial no
-  // schema declarativo, por isso ele não aparece como @@unique aqui.
+  // Duração total do agendamento, congelada no momento da reserva. É a soma
+  // das durações dos serviços em `services`, mas guardada aqui de propósito:
+  // editar um serviço não pode reescrever a agenda de quem já reservou, e a
+  // checagem de conflito precisa do intervalo sem agregar a tabela de junção.
+  durationMinutes Int
+
+  services BookingService[]
+
+  // Campos da relação antiga (um serviço por agendamento). Continuam aqui
+  // porque esta migração é aditiva: os dados são copiados para
+  // `BookingService` e só a migração seguinte remove a coluna.
+  serviceId String
+  service   BarbershopService @relation(fields: [serviceId], references: [id])
+
+  // Unicidade de `date` é garantida por um índice único PARCIAL criado via SQL
+  // cru na migração `booking_partial_unique_by_date` (WHERE status <>
+  // 'CANCELADO'), de forma que horários cancelados fiquem livres para novo
+  // agendamento. Prisma não expressa índice parcial no schema declarativo, por
+  // isso ele não aparece como @@unique aqui.
+  //
+  // A unicidade é por horário, não por (serviço, horário): é um barbeiro só,
+  // então um Corte e uma Barba às 10:00 seriam dois clientes ao mesmo tempo.
   @@index([serviceId, date])
+}
+
+/// Serviços de um agendamento. Sem coluna de ordem: a lista é um conjunto, o
+/// que o cliente marcou, e a exibição ordena pelo que fizer sentido na tela.
+/// A chave composta já garante que o mesmo serviço não entre duas vezes.
+model BookingService {
+  bookingId String
+  serviceId String
+  booking   Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service   BarbershopService @relation(fields: [serviceId], references: [id])
+
+  @@id([bookingId, serviceId])
+  @@index([serviceId])
 }
 
 enum BookingStatus {
