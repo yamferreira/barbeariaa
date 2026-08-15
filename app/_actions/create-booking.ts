@@ -138,10 +138,10 @@ export const createBooking = async (params: CreateBookingParams) => {
         services: {
           create: serviceIds.map((serviceId) => ({ serviceId })),
         },
-        // Coluna antiga, ainda NOT NULL até a migração que a remove. Segue
-        // preenchida com o primeiro serviço para que as telas que leem
-        // `booking.service` (admin, histórico, bloqueios) continuem
-        // funcionando enquanto o código migra para `booking.services`.
+        // Coluna antiga, ainda NOT NULL até a migração que a remove. Nenhuma
+        // tela lê mais `booking.service` — todas passaram para
+        // `booking.services` —, então isso aqui é só para satisfazer a coluna
+        // enquanto ela existe, e sai junto com ela.
         serviceId: serviceIds[0],
       },
     })

@@ -134,7 +134,9 @@ const BlockDateForm = () => {
               >
                 <div>
                   <p className="text-sm font-semibold">{booking.clientName}</p>
-                  <p className="text-sm text-gray-400">{booking.serviceName}</p>
+                  <p className="text-sm text-gray-400">
+                    {booking.serviceNames}
+                  </p>
                 </div>
                 <p className="text-sm font-semibold">{booking.time}</p>
               </div>

@@ -5,12 +5,17 @@ import { endOfDay, format, startOfDay } from "date-fns"
 import { Prisma } from "@/app/generated/prisma"
 import { requireBarbeiro } from "@/app/_lib/auth"
 import { toDateOnly } from "@/app/_lib/date-only"
+import {
+  formatServiceNames,
+  serviceDisplayOrder,
+} from "@/app/_lib/booking-display"
 import { db } from "@/app/_lib/prisma"
 
 export interface ConflictingBooking {
   id: string
   clientName: string
-  serviceName: string
+  /** Todos os serviços do agendamento, já concatenados para exibição. */
+  serviceNames: string
   time: string
 }
 
@@ -31,7 +36,7 @@ export const getBookingsOnDate = async (
       status: { not: "CANCELADO" },
     },
     include: {
-      service: true,
+      services: { include: { service: true }, ...serviceDisplayOrder },
       user: true,
     },
     orderBy: {
@@ -39,10 +44,12 @@ export const getBookingsOnDate = async (
     },
   })
 
+  // Sem faixa de horário aqui de propósito: o aviso de bloqueio responde "quem
+  // já está marcado nesse dia", não quanto tempo cada um ocupa.
   return bookings.map((booking) => ({
     id: booking.id,
     clientName: booking.user?.name ?? booking.guestName ?? "Cliente sem nome",
-    serviceName: booking.service.name,
+    serviceNames: formatServiceNames(booking.services),
     time: format(booking.date, "HH:mm"),
   }))
 }

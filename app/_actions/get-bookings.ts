@@ -1,6 +1,7 @@
 "use server"
 
 import { endOfDay, startOfDay } from "date-fns"
+import { serviceDisplayOrder } from "../_lib/booking-display"
 import { db } from "../_lib/prisma"
 
 interface GetBookingsParams {
@@ -45,10 +46,15 @@ export const getConfirmedBookings = async (userId: string) => {
       },
     },
     include: {
-      service: {
+      services: {
         include: {
-          barbershop: true,
+          service: {
+            include: {
+              barbershop: true,
+            },
+          },
         },
+        ...serviceDisplayOrder,
       },
     },
     orderBy: {
@@ -66,10 +72,15 @@ export const getFinishedBookings = async (userId: string) => {
       },
     },
     include: {
-      service: {
+      services: {
         include: {
-          barbershop: true,
+          service: {
+            include: {
+              barbershop: true,
+            },
+          },
         },
+        ...serviceDisplayOrder,
       },
     },
     orderBy: {

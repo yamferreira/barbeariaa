@@ -1,6 +1,7 @@
 import { endOfDay, startOfDay } from "date-fns"
 import Link from "next/link"
 import { db } from "@/app/_lib/prisma"
+import { serviceDisplayOrder } from "@/app/_lib/booking-display"
 import AdminBookingItem from "@/app/_components/ui/admin-booking-item"
 
 const AdminPage = async () => {
@@ -14,7 +15,7 @@ const AdminPage = async () => {
       },
     },
     include: {
-      service: true,
+      services: { include: { service: true }, ...serviceDisplayOrder },
       user: true,
     },
     orderBy: {

@@ -4,6 +4,7 @@ import { db } from "@/app/_lib/prisma"
 import AdminMonthCalendar from "@/app/_components/ui/admin-month-calendar"
 import AdminBookingItem from "@/app/_components/ui/admin-booking-item"
 import { getMonthGridRange } from "@/app/_lib/calendar-grid"
+import { serviceDisplayOrder } from "@/app/_lib/booking-display"
 import { getMonthBookingCounts } from "./actions"
 
 interface AdminAgendamentosPageProps {
@@ -28,7 +29,7 @@ const AdminAgendamentosPage = async ({
         },
       },
       include: {
-        service: true,
+        services: { include: { service: true }, ...serviceDisplayOrder },
         user: true,
       },
       // BookingStatus é um enum nativo do Postgres declarado como
