@@ -1,76 +1,218 @@
-# Sistema de Agendamento para Barbearia 💈
+# LuizBarber
 
-Sistema web completo para gerenciamento de barbearias, com **CRUD de clientes, agendamentos e serviços**, interface responsiva e autenticação via Google.
+Sistema de agendamento online para uma barbearia com **um único barbeiro**. O cliente agenda sozinho, sem precisar ligar, mandar mensagem ou criar conta — e o barbeiro gerencia toda a operação por um painel administrativo.
 
----
-
-## 🛠 Tecnologias
-
-![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-06B6D4?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=for-the-badge&logo=prisma&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Auth.js](https://img.shields.io/badge/Auth.js-111?style=for-the-badge&logo=auth0&logoColor=white)
+> O projeto nasceu como um marketplace multi-barbearia (inspirado em um curso) e foi convertido para atender a um cliente real: um barbeiro único, com fluxo de agendamento simplificado e direto na home.
 
 ---
 
-## 🚀 Funcionalidades
+## Sumário
 
-- **CRUD de agendamentos:** criação, atualização, cancelamento e visualização de horários disponíveis.
-- **Gestão de serviços:** cadastro e gerenciamento de serviços oferecidos pela barbearia.
-- **Autenticação segura:** login via **Google**, garantindo acesso apenas a usuários autorizados.
-- **Interface responsiva:** compatível com desktops, tablets e celulares.
-- **Filtros e buscas:** encontre clientes e agendamentos rapidamente.
-- **Painel de controle:** dashboard com visão geral dos agendamentos e clientes ativos.
+- [Visão geral](#visão-geral)
+- [Tecnologias](#tecnologias)
+- [Modelo de dados](#modelo-de-dados)
+- [Funcionalidades](#funcionalidades)
+  - [Para o cliente](#para-o-cliente)
+  - [Para o barbeiro (admin)](#para-o-barbeiro-admin)
+- [Regras de negócio](#regras-de-negócio)
+- [Limitações conhecidas](#limitações-conhecidas)
+- [Como rodar localmente](#como-rodar-localmente)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Roadmap](#roadmap)
 
 ---
 
-## 📝 Responsabilidades do Projeto
+## Visão geral
 
-- Desenvolvimento do **frontend** usando React, Next.js e TailwindCSS.
-- Criação do **backend e integração com banco de dados** usando Prisma e PostgreSQL.
-- Implementação de **autenticação e segurança** com Auth.js.
-- Documentação e apresentação do projeto em vídeo: [LinkedIn](https://www.linkedin.com/in/yamferreira)
+O app resolve um problema simples e caro para barbearias pequenas: **a agenda não pode viver na cabeça de uma pessoa só**. Antes, cada agendamento era uma troca de mensagens manual — o cliente pergunta, o barbeiro confere, responde, anota. O LuizBarber transforma isso em um fluxo autoatendido: o cliente abre a home, escolhe o(s) serviço(s), vê os horários realmente disponíveis e confirma — sem depender de ida e volta.
 
----------------------------------------------------------------------------------------------------------------------------------
+Como existe apenas um barbeiro, a agenda é tratada como um **recurso único e serializado**: não é possível ter dois atendimentos simultâneos, mesmo que sejam serviços diferentes. Essa premissa está refletida na arquitetura, no banco de dados e nas regras de validação de horário.
 
+---
 
+## Tecnologias
 
+**Framework e linguagem**
+- [Next.js 15.5](https://nextjs.org/) (App Router) — Server Components por padrão, Server Actions para toda escrita
+- React 19
+- TypeScript (modo strict)
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+**Dados**
+- [Prisma 5.15](https://www.prisma.io/) + PostgreSQL ([Neon](https://neon.tech/))
+- Conexão dupla (`url` via pooler / `directUrl` direto) — necessária porque o Prisma Migrate usa advisory locks de sessão, incompatíveis com connection pooling em modo transaction
+- Migrações versionadas, incluindo SQL cru para um índice único parcial que o Prisma não expressa de forma declarativa
 
-## Getting Started
+**Autenticação**
+- [Auth.js / NextAuth v5](https://authjs.dev/) (beta), provider Google, `PrismaAdapter`
+- Sessão com estratégia `database`, `maxAge` de 90 dias
+- Controle de acesso por `role` (`CLIENTE` / `BARBEIRO`)
 
-First, run the development server:
+**Interface**
+- Tailwind CSS v4
+- [shadcn/ui](https://ui.shadcn.com/) sobre primitivos Radix (dialog, sheet, avatar, label, slot)
+- lucide-react, sonner (toasts), next-themes
+- date-fns v4 (locale `pt-BR`)
+- Calendário de agendamento construído do zero (`booking-calendar.tsx`), para suportar regras de negócio de dias desabilitados
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Qualidade e automação**
+- ESLint + Prettier (com `prettier-plugin-tailwindcss`)
+- Husky + lint-staged (roda lint/format em cada commit)
+- [BrasilAPI](https://brasilapi.com.br/) como fonte de feriados nacionais
+- Rota de cron protegida por Bearer token, comparado em tempo constante (`timingSafeEqual` sobre digest SHA-256), com falha fechada se o segredo não estiver configurado
+
+---
+
+## Modelo de dados
+
+```
+User (role: CLIENTE | BARBEIRO)
+Account / Session / VerificationToken   (Auth.js)
+
+Barbershop ──< BarbershopService (price, durationMinutes)
+                     │
+                     ├──< BookingService (tabela de junção)
+                     │            │
+                     └──────< Booking (date, status, durationMinutes, guestName, guestPhone)
+
+BlockedDate (date @unique, reason)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Decisões de modelagem relevantes:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **`Booking.durationMinutes` é um snapshot.** A duração é congelada no momento da reserva, e não recalculada a partir do catálogo de serviços — editar a duração de um serviço no futuro não pode reescrever agendamentos já feitos.
+- **Índice único parcial** (`Booking_date_active_key`, em `date WHERE status <> 'CANCELADO'`) garante, no nível do banco, que não existam dois agendamentos ativos exatamente no mesmo instante — e libera o slot automaticamente quando um agendamento é cancelado.
+- **Agendamentos suportam múltiplos serviços** via tabela de junção `BookingService` (relação N:N com `BarbershopService`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Funcionalidades
 
-To learn more about Next.js, take a look at the following resources:
+### Para o cliente
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Recurso | Descrição |
+|---|---|
+| Home única | Saudação, data por extenso, agendamentos confirmados e fluxo de marcação — tudo em uma tela |
+| Múltiplos serviços | Seleção em grid; duração e preço total somados em tempo real |
+| Calendário inteligente | Domingos, datas passadas e dias bloqueados já aparecem desabilitados |
+| Horários reais | Só aparecem os horários que cabem sem colidir com outro agendamento nem ultrapassar o fechamento |
+| Agendamento sem login | Basta informar o nome (telefone opcional) — login com Google é só uma opção |
+| Histórico | Agendamentos confirmados e finalizados, separados, com faixa de horário |
+| Cancelamento | Pelo próprio cliente, com confirmação |
+| Página informativa | Endereço, telefones, descrição e catálogo de serviços com preço e duração |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Para o barbeiro (`/admin`)
 
-## Deploy on Vercel
+| Recurso | Descrição |
+|---|---|
+| Dashboard | Agendamentos do dia, ordenados por horário |
+| Agenda mensal | Calendário com contagem de agendamentos ativos por dia |
+| Ordenação inteligente | Lista do dia agrupada por status: Confirmado → Concluído → Cancelado |
+| Ações por agendamento | Concluir, cancelar, reagendar |
+| Reagendamento validado | Bloqueia domingo, dia indisponível, fechamento e sobreposição de horário |
+| Bloqueio de dias | Com motivo opcional; avisa (sem cancelar automaticamente) se já houver agendamentos no dia |
+| Feriados automáticos | Sincronização manual ou via cron dos feriados nacionais (BrasilAPI), excluindo dezembro |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Regras de negócio
+
+- **Conflito é de intervalo, não de instante.** Um agendamento ocupa `[início, início + duração)`. Um serviço de 1h às 11:00 conflita com outro às 12:00, mesmo sem repetir o horário exato.
+- **Encostar não é conflito.** Um agendamento que termina às 13:00 não colide com outro que começa às 13:00.
+- **Defesa em três camadas.** O filtro de horários no cliente é conveniência de UX; a validação real acontece na Server Action; e o índice único parcial do banco é a última barreira contra condição de corrida.
+- **Bloquear um dia avisa, não cancela.** Se houver agendamentos no dia, o barbeiro é avisado e precisa confirmar — nada é alterado automaticamente. Avisar o cliente é responsabilidade manual.
+- **Feriados de dezembro não entram na sincronização automática** — ficam sob decisão do barbeiro.
+- **A sincronização de feriados nunca sobrescreve um bloqueio manual** já existente, e é idempotente (rodar de novo não duplica).
+
+---
+
+## Limitações conhecidas
+
+- Não há envio de notificações (e-mail, SMS ou WhatsApp) — nem confirmação, nem lembrete, nem aviso de cancelamento.
+- Catálogo de serviços (preço, duração) não é editável pela interface — mudanças exigem acesso direto ao banco.
+- Horário de funcionamento é fixo no código (hoje: 08:00–20:00, fechado aos domingos) — não é configurável pelo barbeiro.
+- Não há relatório de faturamento.
+- Não é possível registrar um atendimento "walk-in" (sem passar pela agenda) direto pelo painel.
+- Cliente que agenda sem login não consegue ver nem cancelar a própria reserva depois — não existe vínculo entre pessoa e agendamento sem conta.
+- O cancelamento feito pelo cliente remove o registro, em vez de marcá-lo como cancelado (o admin, ao cancelar, atualiza o status). Na prática, o barbeiro não é notificado quando um cliente desmarca.
+
+---
+
+## Como rodar localmente
+
+### Pré-requisitos
+- Node.js 20+
+- Um banco PostgreSQL (recomendado: [Neon](https://neon.tech/))
+- Credenciais OAuth do Google
+
+### Passo a passo
+
+```bash
+# 1. Clonar o repositório
+git clone <url-do-repositorio>
+cd luizbarber
+
+# 2. Instalar dependências
+npm install
+
+# 3. Configurar variáveis de ambiente
+cp .env.example .env
+```
+
+Preencha o `.env` com:
+
+```env
+DATABASE_URL="postgresql://.../neondb?sslmode=require"     # endpoint com pooler
+DIRECT_URL="postgresql://.../neondb?sslmode=require"        # endpoint direto, sem "-pooler"
+
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+
+CRON_SECRET="..."   # protege a rota de sincronização de feriados
+```
+
+```bash
+# 4. Aplicar as migrações e gerar o client do Prisma
+npx prisma migrate deploy
+npx prisma generate
+
+# 5. Rodar o servidor de desenvolvimento
+npm run dev
+```
+
+A aplicação sobe em `http://localhost:3000`.
+
+---
+
+## Estrutura do projeto
+
+```
+app/
+├── admin/                  # área protegida do barbeiro
+│   ├── agendamentos/       # listagem e reagendamento
+│   └── bloqueios/          # bloqueio de dias e feriados
+├── api/
+│   ├── auth/                # NextAuth
+│   └── cron/sync-holidays/  # sincronização automática de feriados
+├── barbershop/[id]/        # página informativa (somente leitura)
+├── bookings/                # histórico do cliente
+├── _actions/                # Server Actions
+├── _components/ui/          # componentes de interface
+└── _lib/                    # helpers (auth, agenda, datas)
+
+prisma/
+├── schema.prisma
+├── migrations/
+└── seed.ts
+```
+
+---
+
+## Roadmap
+
+- [ ] Remover a coluna legada `Booking.serviceId` (migração de finalização, após período de estabilização em produção)
+- [ ] Notificações de confirmação/cancelamento
+- [ ] Cancelamento do cliente atualizar status em vez de remover o registro
+- [ ] Horário de funcionamento configurável pelo barbeiro
+- [ ] Edição de catálogo de serviços pela interface
+- [ ] Relatório de faturamento
+- [ ] Suporte a walk-in pelo painel administrativo
